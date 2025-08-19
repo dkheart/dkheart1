@@ -1,0 +1,34 @@
+SELECT DISTINCT
+a.sgbstdn_pidm,
+SWKUTIL.fws_get_uin_from_pidm(a.sgbstdn_pidm) AS uin,
+a.sgbstdn_coll_code_1,
+a.sgbstdn_dept_code,
+a.sgbstdn_program_1,
+a.sgbstdn_degc_code_1,
+a.sgbstdn_majr_code_1,
+a.sgbstdn_majr_code_conc_1,
+a.sgbstdn_term_code_ctlg_1,
+swrpgms.swrpgms_program          AS swr_prgm,
+swrpgms.swrpgms_upper_program    AS swr_upper_pgm,
+swrpgms.swrpgms_major_gpa_program AS swr_mjr_gpa_pgm,
+swrpgms.swrpgms_cbk_program      AS swr_cbk_pgm,
+swrpgms.swrpgms_upper_majr       AS swr_upper_mjr
+FROM
+    sgbstdn a
+    LEFT JOIN swrpgms ON swrpgms.swrpgms_program = a.sgbstdn_program_1
+      AND swrpgms.swrpgms_upper_majr = SUBSTR(a.sgbstdn_majr_code_1, 1, 3) -- Example correction
+WHERE
+    a.sgbstdn_stst_code = 'AS'
+    AND a.sgbstdn_levl_code = 'UG'
+    AND swkrc_capp_upd.fws_is_lower_level_program(a.sgbstdn_program_1) = 'Y'
+    AND a.sgbstdn_styp_code = 'N'
+    AND a.sgbstdn_term_code_eff = (
+        SELECT MAX(sgbstdn_term_code_eff)
+        FROM sgbstdn
+        WHERE sgbstdn_pidm = a.sgbstdn_pidm
+          AND sgbstdn_program_1 = a.sgbstdn_program_1
+          AND sgbstdn_styp_code = a.sgbstdn_styp_code
+          AND sgbstdn_term_code_eff <= :effective_term_code -- parameterized
+    )
+ORDER BY
+    uin, a.sgbstdn_coll_code_1, a.sgbstdn_program_1, a.sgbstdn_degc_code_1;
